@@ -1,7 +1,0 @@
-# Cloudflare Configuration
-CLOUDFLARE_ACCOUNT_ID=555c1ab251d88b0773ace0621a47ae6d
-CLOUDFLARE_API_TOKEN=cfat_1gAi1qVeq8ACaNtDh3RT2AKjiCN4FcTKOf20hdarb3901a7d
-
-# API Authentication (comma-separated for multiple keys)
-# Generate secure keys: openssl rand -hex 32
-API_KEYS=your-secret-key-1,your-secret-key-2
