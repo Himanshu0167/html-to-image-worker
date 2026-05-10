@@ -22,7 +22,7 @@ enabled = false
 [vars]
 R2_PUBLIC_DOMAIN = "pub-0f88a89fca694876be6529864f42efa7.r2.dev"
 ENVIRONMENT = "production"
-# API_KEYS = "555c1ab251d88b0773ace0621a47ae6d,cfat_1gAi1qVeq8ACaNtDh3RT2AKjiCN4FcTKOf20hdarb3901a7d" # Add via wrangler secret put API_KEYS
+# API_KEYS = "your-secret-key-1,your-secret-key-2" # Add via wrangler secret put API_KEYS
 
 # Development environment
 [env.development]
