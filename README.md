@@ -1,420 +1,510 @@
-# HTML to Image API - Cloudflare Workers
+# HTML to Image Worker
 
-A powerful HTML to image conversion service built on Cloudflare Workers using Puppeteer. Convert HTML templates to high-quality PNG/JPEG images with variable replacement and R2 storage.
+Cloudflare Worker API for rendering HTML or HTML templates into PNG/JPEG images using `@cloudflare/puppeteer`, then storing the result in Cloudflare R2.
 
-## 🚀 Features
+This project is useful for:
 
-- **Template Variables**: Use `{{VARIABLE}}` syntax for dynamic content
-- **Real Puppeteer**: Actual browser rendering with @cloudflare/puppeteer
-- **R2 Storage**: Images stored in Cloudflare R2 with public URLs
-- **Multiple formats**: PNG, JPEG support with quality control
-- **Variable Processing**: Extract, validate, and replace template variables
-- **Production Ready**: Error handling, validation, security headers
-- **Fast & scalable**: Powered by Cloudflare Workers edge network
+- social media post generation
+- invoice or certificate rendering
+- share image / OG image generation
+- ad creatives and product cards
+- internal tools that need screenshots from structured HTML
 
-## 🔧 Setup
+## What It Does
 
-### Prerequisites
-- Cloudflare account with R2 and Browser bindings enabled
-- Node.js and npm installed
-- Wrangler CLI: `npm install -g wrangler`
+- renders plain HTML to PNG or JPEG
+- supports template variables with `{{name}}` syntax
+- uploads rendered images to Cloudflare R2
+- returns a public image URL
+- supports API key authentication
+- works in local dev and Cloudflare production environments
 
-### Installation
+## Architecture
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/mkurecka/html-to-image-worker.git
-   cd html-to-image-worker
-   ```
+Request flow:
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+1. Client sends authenticated request to the Worker
+2. Worker validates API key
+3. Worker renders HTML with Puppeteer
+4. Worker uploads the image to R2
+5. Worker returns JSON with the public image URL
 
-3. **Configure environment variables**
-   ```bash
-   # Copy the example file
-   cp .dev.vars.example .dev.vars
+Core pieces:
 
-   # Edit .dev.vars with your actual values
-   # Add your Cloudflare credentials and generate secure API keys
-   ```
+- Worker runtime: Cloudflare Workers
+- Rendering: `@cloudflare/puppeteer`
+- Storage: Cloudflare R2
+- Public delivery: R2 public domain
 
-   Generate secure API keys:
-   ```bash
-   openssl rand -hex 32
-   ```
+## Endpoints
 
-4. **Create R2 bucket**
-   ```bash
-   npx wrangler r2 bucket create html-images-dev
-   npx wrangler r2 bucket create html-images-prod
-   ```
+Public endpoints:
 
-5. **Set production API keys (secure)**
-   ```bash
-   wrangler secret put API_KEYS
-   # Enter your comma-separated API keys when prompted
-   ```
+- `GET /`
+- `GET /health`
 
-6. **Deploy to Cloudflare Workers**
-   ```bash
-   npm run deploy
-   ```
+Protected endpoints:
 
-The worker will automatically set up browser and R2 bindings as configured in `wrangler.toml`.
+- `POST /render`
+- `POST /template/render`
+- `POST /template/preview`
+- `POST /template/variables`
 
-## 📖 Usage
+## Authentication
 
-### 🔐 Authentication
+All protected endpoints require a valid API key.
 
-All API endpoints (except `/` and `/health`) require API key authentication.
+Supported headers:
 
-**Three ways to authenticate:**
+```http
+X-API-Key: your-api-key
+```
 
-1. **X-API-Key header** (Recommended)
-   ```bash
-   -H "X-API-Key: YOUR_API_KEY"
-   ```
+```http
+Authorization: Bearer your-api-key
+```
 
-2. **Authorization Bearer token**
-   ```bash
-   -H "Authorization: Bearer YOUR_API_KEY"
-   ```
+```http
+Api-Key: your-api-key
+```
 
-3. **Api-Key header**
-   ```bash
-   -H "Api-Key: YOUR_API_KEY"
-   ```
+Important:
 
-**Public endpoints** (no authentication required):
-- `GET /` - API documentation
-- `GET /health` - Health check
+- the request key must exactly match one of the values in `API_KEYS`
+- local `.dev.vars` only affects local development
+- deployed environments require the `API_KEYS` Cloudflare secret
+- Cloudflare API tokens are not the same thing as app API keys
 
-**Protected endpoints** (authentication required):
-- `POST /render` - Generate image from HTML
-- `POST /template/render` - Generate image from template
-- `POST /template/preview` - Preview processed HTML
-- `POST /template/variables` - Extract template variables
+## Setup
 
-### API Endpoints
+### 1. Install dependencies
 
-**Live API**: `https://html-to-image-worker.kureckamichal.workers.dev`
+```bash
+npm install
+```
 
-- **GET** `/` - Complete API documentation with examples (public)
-- **POST** `/template/render` - Generate images from templates with variables (protected)
-- **POST** `/template/preview` - Preview processed HTML without generating image (protected)
-- **POST** `/template/variables` - Extract all variables from template (protected)
-- **POST** `/render` - Generate image from plain HTML (protected)
-- **GET** `/health` - Service health check (public)
+### 2. Create local env file
 
-### Template Rendering (Recommended)
+Use `.dev.vars.example` as the template:
 
-**POST** `/template/render`
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+Then set real values:
+
+```env
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
+API_KEYS=dev-api-key
+```
+
+### 3. Create the R2 bucket
+
+This project is currently configured to use one bucket in all environments:
+
+```bash
+npx wrangler r2 bucket create html-images
+```
+
+### 4. Enable public access on the bucket
+
+In Cloudflare R2:
+
+1. Open the `html-images` bucket
+2. Go to `Settings`
+3. Enable the public bucket URL or attach a custom domain
+4. Copy the public domain
+
+Current configured public domain:
+
+```text
+pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev
+```
+
+### 5. Run locally
+
+```bash
+npm run dev
+```
+
+Default local URL:
+
+```text
+http://127.0.0.1:8787
+```
+
+### 6. Set production API keys
+
+```bash
+wrangler secret put API_KEYS --env production
+```
+
+Enter either one key:
+
+```text
+my-production-key
+```
+
+Or multiple comma-separated keys:
+
+```text
+key1,key2,key3
+```
+
+### 7. Deploy
+
+```bash
+npm run deploy:production
+```
+
+## Current Environment Configuration
+
+This repo is currently configured as follows:
+
+- R2 bucket: `html-images`
+- Public image domain: `pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev`
+- Production deploy command: `wrangler deploy --env production`
+
+## API Usage
+
+### Health check
+
+```bash
+curl https://your-worker-url/health
+```
+
+### Render plain HTML
+
+Endpoint:
+
+```text
+POST /render
+```
+
+Request body:
 
 ```json
 {
-  "template": "<div style='background: #FF6B6B; color: white; padding: 30px; text-align: center;'><h1>{{title}}</h1><p>{{message}}</p></div>",
-  "variables": {
-    "title": "Hello World!",
-    "message": "Generated with API"
-  },
-  "width": 400,
-  "height": 250,
+  "html": "<div style='padding:40px;background:#111;color:#fff;border-radius:16px;'><h1>Hello</h1><p>Generated by the Worker</p></div>",
+  "width": 1200,
+  "height": 800,
   "format": "png",
   "quality": 90,
+  "deviceScaleFactor": 1,
   "returnUrl": true
 }
 ```
 
-### Simple HTML Rendering
+Example:
 
-**POST** `/render`
+```bash
+curl -X POST https://your-worker-url/render \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "html": "<div style=\"padding:40px;background:#111;color:#fff;border-radius:16px;\"><h1>Hello</h1><p>Generated by the Worker</p></div>",
+    "width": 1200,
+    "height": 800,
+    "format": "png",
+    "returnUrl": true
+  }'
+```
+
+### Render a template with variables
+
+Endpoint:
+
+```text
+POST /template/render
+```
+
+Request body:
 
 ```json
 {
-  "html": "<div style='padding: 40px; background: #007bff; color: white; text-align: center;'><h1>Simple HTML</h1><p>No variables needed</p></div>",
-  "width": 400,
-  "height": 200,
+  "template": "<div style='padding:40px;background:#f5f5f5;'><h1>{{title}}</h1><p>{{message}}</p></div>",
+  "variables": {
+    "title": "Launch Update",
+    "message": "The API is live."
+  },
+  "width": 1200,
+  "height": 800,
   "format": "png",
+  "quality": 90,
+  "sanitize": true,
   "returnUrl": true
 }
 ```
 
-### Parameters
+Example:
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `template` | string | **required** | HTML template with `{{VARIABLE}}` placeholders |
-| `variables` | object | {} | Key-value pairs for variable replacement |
-| `html` | string | **required** | Static HTML content (for `/render` endpoint) |
-| `width` | number | 1200 | Viewport width in pixels |
-| `height` | number | 800 | Viewport height in pixels |
-| `format` | string | "png" | Output format: "png", "jpeg" |
-| `quality` | number | 90 | JPEG quality (1-100) |
-| `deviceScaleFactor` | number | 1 | Device pixel ratio (1x, 2x, 3x) |
-| `returnUrl` | boolean | true | Return R2 URL instead of binary data |
-| `sanitize` | boolean | true | Sanitize variables to prevent XSS |
+```bash
+curl -X POST https://your-worker-url/template/render \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "<div style=\"padding:40px;background:#f5f5f5;\"><h1>{{title}}</h1><p>{{message}}</p></div>",
+    "variables": {
+      "title": "Launch Update",
+      "message": "The API is live."
+    },
+    "width": 1200,
+    "height": 800,
+    "format": "png",
+    "returnUrl": true
+  }'
+```
 
-### Recommended Social Media Dimensions
+### Preview processed HTML without rendering
 
-#### Instagram
-- **Story**: 1080 x 1920 pixels (9:16 ratio)
-- **Post Square**: 1080 x 1080 pixels (1:1 ratio)
-- **Post Portrait**: 1080 x 1350 pixels (4:5 ratio)
-- **Profile Picture**: 320 x 320 pixels
+Endpoint:
 
-#### Facebook
-- **Post Image**: 1200 x 628 pixels
-- **Profile Picture**: 196 x 196 pixels
-- **Cover Photo**: 1584 x 396 pixels
-- **Story**: 1080 x 1920 pixels (9:16 ratio)
+```text
+POST /template/preview
+```
 
-#### X (Twitter)
-- **Post Image Landscape**: 1200 x 628 pixels
-- **Post Image Square**: 1200 x 1200 pixels
-- **Profile Picture**: 400 x 400 pixels
-- **Header**: 1500 x 500 pixels
+Use this to debug template variables before paying the rendering cost.
 
-#### LinkedIn
-- **Post Image**: 1200 x 627 pixels
-- **Profile Picture**: 400 x 400 pixels
-- **Cover Photo**: 1584 x 396 pixels
-- **Company Logo**: 300 x 300 pixels
+Example:
 
-#### YouTube
-- **Thumbnail**: 1280 x 720 pixels (16:9 ratio)
-- **Channel Art**: 2560 x 1440 pixels
-- **Shorts**: 1080 x 1920 pixels (9:16 ratio)
+```bash
+curl -X POST https://your-worker-url/template/preview \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "<div><h1>{{title}}</h1><p>{{message}}</p></div>",
+    "variables": {
+      "title": "Preview",
+      "message": "Check the processed HTML first."
+    }
+  }'
+```
 
-#### TikTok
-- **Video**: 1080 x 1920 pixels (9:16 ratio)
-- **Profile Picture**: 200 x 200 pixels
+### Extract template variables
 
-#### Pinterest
-- **Pin**: 1000 x 1500 pixels (2:3 ratio)
-- **Square Pin**: 1000 x 1000 pixels
-- **Profile Picture**: 165 x 165 pixels
+Endpoint:
 
-### Response Format
+```text
+POST /template/variables
+```
+
+Example:
+
+```bash
+curl -X POST https://your-worker-url/template/variables \
+  -H "X-API-Key: your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "template": "<div>Invoice {{invoiceNumber}} for {{companyName}} totals {{amount}}</div>"
+  }'
+```
+
+## Request Fields
+
+Common fields:
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `width` | number | no | default `1200` |
+| `height` | number | no | default `800` |
+| `format` | string | no | `png` or `jpeg` |
+| `quality` | number | no | used for JPEG |
+| `deviceScaleFactor` | number | no | controls pixel density |
+| `returnUrl` | boolean | no | default `true` |
+
+`/render` fields:
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `html` | string | yes | raw HTML to render |
+
+`/template/render` fields:
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `template` | string | yes | HTML with `{{variables}}` |
+| `variables` | object | no | key-value map for replacements |
+| `sanitize` | boolean | no | default `true` |
+
+## Response Format
+
+Successful render responses look like:
 
 ```json
 {
   "success": true,
   "data": {
-    "url": "https://pub-0f88a89fca694876be6529864f42efa7.r2.dev/template-xxx.png",
-    "filename": "template-xxx.png",
+    "url": "https://pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev/template-2026-05-11T10-10-10-000Z-abc123.png",
+    "filename": "template-2026-05-11T10-10-10-000Z-abc123.png",
     "size": 24080,
     "format": "png",
-    "dimensions": { "width": 400, "height": 250 },
-    "template": {
-      "variables": ["title", "message"],
-      "processed": { "title": "Hello World!", "message": "Generated with API" },
-      "validation": { "isValid": true, "missing": [] }
+    "dimensions": {
+      "width": 1200,
+      "height": 800
     }
   }
 }
 ```
 
-### Examples
+Template render responses also include variable metadata.
 
-**Template with variables:**
+## Full-Potential Use Cases
+
+### 1. Social media content generation
+
+Use templates for:
+
+- Instagram posts
+- carousels
+- quote cards
+- thumbnails
+- ad creatives
+
+Pattern:
+
+1. create one HTML template
+2. inject campaign variables
+3. render many image variants automatically
+
+### 2. Personalized transactional assets
+
+Use it for:
+
+- invoices
+- receipts
+- certificates
+- event tickets
+- customer reports
+
+Pattern:
+
+1. store a branded template
+2. send dynamic data from your app
+3. save returned image URLs in your database
+
+### 3. Open Graph and share images
+
+Generate share images on demand from:
+
+- blog post title
+- author
+- feature image
+- brand color
+
+Pattern:
+
+1. build an HTML template for OG cards
+2. call `/template/render` during publish flow
+3. store returned URL as page metadata
+
+### 4. Internal tools and automations
+
+Useful for:
+
+- no-code workflow tools
+- CMS automations
+- AI agents that need image output
+- reporting dashboards
+
+Pattern:
+
+1. produce HTML from structured data
+2. call `/render`
+3. consume the returned image URL downstream
+
+## Best Practices
+
+- use `/template/preview` while building templates
+- keep HTML self-contained when possible
+- prefer inline styles for predictable rendering
+- host external assets on reliable public URLs
+- use `deviceScaleFactor: 2` for sharper social media images
+- use `jpeg` for smaller file sizes when transparency is not needed
+- keep width and height aligned with the target platform
+- use one stable template and vary only data for repeatable outputs
+
+## Common Problems
+
+### `Invalid API key`
+
+Cause:
+
+- request key does not match `API_KEYS`
+
+Fix:
+
+- send the exact configured key
+- verify the `API_KEYS` secret is set in Cloudflare for production
+
+### `API authentication is not configured on the server`
+
+Cause:
+
+- deployed environment is missing the `API_KEYS` secret
+
+Fix:
+
 ```bash
-curl -X POST https://html-to-image-worker.kureckamichal.workers.dev/template/render \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "template": "<div style=\"background: #FF6B6B; color: white; padding: 30px; text-align: center;\"><h1>{{title}}</h1><p>{{message}}</p></div>",
-    "variables": {"title": "Hello World!", "message": "Generated with API"},
-    "width": 400,
-    "height": 250,
-    "format": "png"
-  }'
+wrangler secret put API_KEYS --env production
+wrangler deploy --env production
 ```
 
-**Simple HTML rendering:**
+### R2 bucket not found
+
+Cause:
+
+- configured bucket name does not exist in Cloudflare
+
+Fix:
+
+- this repo expects `html-images`
+- create it or change `wrangler.toml` to your real bucket name
+
+### Wrong public image domain in response
+
+Cause:
+
+- `R2_PUBLIC_DOMAIN` does not match the bucket's real public domain
+- or the worker was not redeployed after config changes
+
+Fix:
+
+- verify `R2_PUBLIC_DOMAIN` in `wrangler.toml`
+- redeploy the Worker
+
+## For AI Agents
+
+If another AI agent needs to use this API, give it this summary:
+
+- authenticate with `X-API-Key` or `Authorization: Bearer`
+- use `POST /render` for raw HTML
+- use `POST /template/render` for variable-based templates
+- use `POST /template/preview` to debug templates
+- expect a JSON response containing a public image URL
+- bucket is `html-images`
+- public domain is `pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev`
+
+## Project Files
+
+- `src/index.js` - main Worker routes
+- `src/utils/auth-middleware.js` - API key validation
+- `src/utils/template-processor.js` - template parsing and replacement
+- `src/utils/r2-storage.js` - R2 upload and public URL generation
+- `wrangler.toml` - Worker, env, and bucket configuration
+
+## Deploy Checklist
+
+Before production deploy, verify:
+
+- `API_KEYS` secret is set
+- R2 bucket `html-images` exists
+- R2 bucket public domain is enabled
+- `R2_PUBLIC_DOMAIN` matches the actual bucket public domain
+- Worker is deployed with `--env production`
+
+Deploy:
+
 ```bash
-curl -X POST https://html-to-image-worker.kureckamichal.workers.dev/render \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "html": "<div style=\"padding: 40px; background: #007bff; color: white; text-align: center;\"><h1>Simple HTML</h1><p>No variables needed</p></div>",
-    "width": 400,
-    "height": 200,
-    "format": "png"
-  }'
+npm run deploy:production
 ```
-
-**Extract template variables:**
-```bash
-curl -X POST https://html-to-image-worker.kureckamichal.workers.dev/template/variables \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"template": "<div>Invoice #{{invoiceNumber}} for {{companyName}} - Amount: ${{amount}}</div>"}'
-```
-
-## 🎨 API Documentation
-
-Visit the live API for complete documentation with examples:
-```
-https://html-to-image-worker.kureckamichal.workers.dev/
-```
-
-The API documentation includes:
-- Complete endpoint documentation
-- Copy-paste ready curl examples
-- Template variable syntax
-- Response format details
-- Real-world use cases (invoices, certificates, business cards)
-
-## 💰 Cost Analysis
-
-### Cloudflare Workers Pricing
-- **Requests**: $0.50 per million requests (first 100K free daily)
-- **CPU Time**: $0.02 per 100,000 GB-seconds
-- **Browser Rendering**: Browser usage included in worker
-- **R2 Storage**: $0.015 per GB stored, $0.36 per million Class A operations
-
-### Estimated Costs (per 1,000 renders)
-- **Worker execution**: ~$0.02-0.05
-- **R2 storage**: ~$0.01-0.02
-- **Total**: ~$0.03-0.07 per 1,000 renders
-
-*Note: First 100K requests daily are free, R2 has 10GB free storage*
-
-## 🔒 Security
-
-- **API Key Authentication**: All endpoints (except `/` and `/health`) require valid API key
-- **Multiple Auth Methods**: Supports X-API-Key, Authorization Bearer, and Api-Key headers
-- **Secure Key Storage**: Production keys stored as Wrangler secrets (never in git)
-- **XSS Protection**: Template variables are sanitized by default
-- **CORS enabled**: For browser requests with security headers
-- **Input validation**: All inputs validated and error handling
-- **R2 Security**: Images stored with public URLs (no authentication needed)
-- **Template Variables**: Automatic HTML escaping prevents XSS
-
-### Managing API Keys
-
-**Development:**
-- Keys stored in `.dev.vars` (never committed to git)
-- Example file: `.dev.vars.example`
-
-**Production:**
-```bash
-# Set API keys securely (not stored in git)
-wrangler secret put API_KEYS
-# Enter: key1,key2,key3
-
-# List secrets
-wrangler secret list
-
-# Delete a secret
-wrangler secret delete API_KEYS
-```
-
-**Generate secure keys:**
-```bash
-# Generate a 32-byte hex key
-openssl rand -hex 32
-```
-
-## 🛠️ Development
-
-### Local Development
-```bash
-# Start development server
-npm run dev
-
-# The server will run at http://localhost:8787
-```
-
-### Project Structure
-```
-├── src/
-│   ├── index.js                    # Main worker code
-│   └── utils/
-│       ├── auth-middleware.js      # API key authentication
-│       ├── template-processor.js   # Template variable processing
-│       ├── response-utils.js       # Response helpers
-│       └── r2-storage.js          # R2 storage utilities
-├── wrangler.toml                  # Cloudflare Workers configuration
-├── package.json                   # Dependencies and scripts
-├── .dev.vars.example              # Environment variables template
-├── CLAUDE.md                      # Project documentation
-└── README.md                      # This file
-```
-
-### Scripts
-- `npm run dev` - Start local development server
-- `npm run deploy` - Deploy to Cloudflare Workers
-- `npm run deploy:production` - Deploy to production environment
-
-## 📚 API Reference
-
-### Health Check
-```bash
-GET /health
-```
-Returns: `OK` (200 status)
-
-### Screenshot Generation
-```bash
-POST /html-to-image
-```
-Returns: Binary image data with appropriate Content-Type header
-
-### Demo Interface
-```bash
-GET /
-```
-Returns: Interactive HTML demo page
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **"Invalid API token"**
-   - Verify your API token has "Browser Rendering - Edit" permissions
-   - Check that the token is correctly set in environment variables
-
-2. **"Account ID not found"**
-   - Ensure you're using the correct Account ID from Cloudflare dashboard
-   - Account ID should be a 32-character hex string
-
-3. **"Unrecognized keys" error**
-   - The Browser Rendering API has specific parameter requirements
-   - Ensure you're using supported parameters only
-
-4. **JSON parsing errors**
-   - Use proper JSON escaping in curl commands
-   - Consider using JSON files with `@filename` syntax
-
-### Debug Mode
-Enable debug logging by setting:
-```bash
-wrangler secret put DEBUG_MODE
-# Enter: true
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🔗 Links
-
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Browser Rendering API](https://developers.cloudflare.com/browser-rendering/)
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
-
----
-
-Built with ❤️ using Cloudflare Workers and Browser Rendering API
