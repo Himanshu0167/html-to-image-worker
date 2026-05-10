@@ -20,10 +20,13 @@ export function validateApiKey(request, env) {
   }
 
   // Extract API key from headers (supports multiple formats)
-  const apiKey =
+  const authorizationHeader = request.headers.get('Authorization');
+  const bearerToken = authorizationHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+  const apiKey = (
     request.headers.get('X-API-Key') ||
-    request.headers.get('Authorization')?.replace('Bearer ', '') ||
-    request.headers.get('Api-Key');
+    bearerToken ||
+    request.headers.get('Api-Key')
+  )?.trim();
 
   // Check if API key is provided
   if (!apiKey) {
@@ -46,6 +49,14 @@ export function validateApiKey(request, env) {
   if (allowedKeys.length === 0 && env.ENVIRONMENT === 'development') {
     console.warn('No API keys configured - using development mode');
     return { isValid: true };
+  }
+
+  if (allowedKeys.length === 0) {
+    console.error('[AUTH] API_KEYS is not configured for this environment');
+    return {
+      isValid: false,
+      error: 'API authentication is not configured on the server'
+    };
   }
 
   // Check if provided key matches any allowed key
