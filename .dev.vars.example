@@ -1,0 +1,7 @@
+# Cloudflare Configuration
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
+
+# API Authentication (comma-separated for multiple keys)
+# Generate secure keys: openssl rand -hex 32
+API_KEYS=dev-api-key

@@ -33,8 +33,14 @@ export function validateApiKey(request, env) {
     };
   }
 
-  // Get allowed API keys from environment (comma-separated for multiple keys)
-  const allowedKeys = env.API_KEYS?.split(',').map(key => key.trim()) || [];
+  // Ignore placeholder example values so local development does not fail with
+  // a misleading "Invalid API key" when .dev.vars has not been customized yet.
+  const placeholderKeys = new Set(['your-secret-key-1', 'your-secret-key-2']);
+  const allowedKeys = env.API_KEYS
+    ?.split(',')
+    .map(key => key.trim())
+    .filter(Boolean)
+    .filter(key => !placeholderKeys.has(key)) || [];
 
   // Development fallback - allow default key if no keys configured
   if (allowedKeys.length === 0 && env.ENVIRONMENT === 'development') {
