@@ -48,7 +48,8 @@ A powerful HTML to image conversion service built on Cloudflare Workers using Pu
 
 4. **Create R2 bucket**
    ```bash
-   npx wrangler r2 bucket create html-images
+   npx wrangler r2 bucket create html-images-dev
+   npx wrangler r2 bucket create html-images-prod
    ```
 
 5. **Set production API keys (secure)**

@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 [[r2_buckets]]
 binding = "IMAGE_BUCKET"
 bucket_name = "html-images"
-preview_bucket_name = "html-images-dev"
+preview_bucket_name = "html-images"
 
 # Browser binding for Puppeteer
 [browser]
@@ -20,7 +20,7 @@ enabled = false
 
 # Environment variables
 [vars]
-R2_PUBLIC_DOMAIN = "pub-0f88a89fca694876be6529864f42efa7.r2.dev"
+R2_PUBLIC_DOMAIN = "pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev"
 ENVIRONMENT = "production"
 # API_KEYS = "your-secret-key-1,your-secret-key-2" # Add via wrangler secret put API_KEYS
 
@@ -30,11 +30,11 @@ name = "html-to-image-worker-dev"
 
 [[env.development.r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "html-images-dev"
-preview_bucket_name = "html-images-dev"
+bucket_name = "html-images"
+preview_bucket_name = "html-images"
 
 [env.development.vars]
-R2_PUBLIC_DOMAIN = "pub-0f88a89fca694876be6529864f42efa7.r2.dev"
+R2_PUBLIC_DOMAIN = "pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev"
 ENVIRONMENT = "development"
 
 # Production environment
@@ -43,9 +43,9 @@ name = "html-to-image-worker-prod"
 
 [[env.production.r2_buckets]]
 binding = "IMAGE_BUCKET"
-bucket_name = "html-images-prod"
-preview_bucket_name = "html-images-prod"
+bucket_name = "html-images"
+preview_bucket_name = "html-images"
 
 [env.production.vars]
-R2_PUBLIC_DOMAIN = "pub-0f88a89fca694876be6529864f42efa7.r2.dev"
+R2_PUBLIC_DOMAIN = "pub-f9e942a4251a4ea48ca1b45c039c0f01.r2.dev"
 ENVIRONMENT = "production"
